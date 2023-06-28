@@ -1,20 +1,16 @@
 import base64
 import io
 
-import pandas as pd
-import torch
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.svm import LinearSVC
-from sklearn import preprocessing
-import sklearn.impute as impute
-from sklearn.feature_selection import SelectFromModel
-from sklearn.model_selection import cross_val_score, GridSearchCV
-from sklearn.datasets import make_blobs
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import ExtraTreesClassifier
-import sklearn.metrics as metrics
 import matplotlib.pyplot as pl
+import numpy as np
+import pandas as pd
+import sklearn.impute as impute
+import sklearn.metrics as metrics
+import torch
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.feature_selection import SelectFromModel
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
 
 torch.cuda.is_available()
 
@@ -28,13 +24,13 @@ def data_load(path):
 
 
 def train_pre_process(X, y):
-    imputer = impute.SimpleImputer(strategy="most_frequent")
-    imputer.fit(X)
-    X = imputer.transform(X)
+    Impute = impute.SimpleImputer(strategy="most_frequent")
+    Impute.fit(X)
+    X = Impute.transform(X)
 
-    clf = ExtraTreesClassifier(n_estimators=50)
-    clf = clf.fit(X, y)
-    selection_model = SelectFromModel(clf, prefit=True)
+    classifier = ExtraTreesClassifier(n_estimators=50)
+    classifier = classifier.fit(X, y)
+    selection_model = SelectFromModel(classifier, prefit=True)
 
     X = selection_model.transform(X)
     # print(X.shape)
@@ -42,9 +38,9 @@ def train_pre_process(X, y):
 
 
 def test_pre_process(X, y, selection_model):
-    imputer = impute.SimpleImputer(strategy="most_frequent")
-    imputer.fit(X)
-    X = imputer.transform(X)
+    Impute = impute.SimpleImputer(strategy="most_frequent")
+    Impute.fit(X)
+    X = Impute.transform(X)
 
     X = selection_model.transform(X)
     # print(X.shape)
@@ -90,7 +86,7 @@ def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels
     return matrix
 
 
-class clf:
+class Classifier:
     def __init__(self, module, param_grid):
         self.param_grid = param_grid
         self.module = module
