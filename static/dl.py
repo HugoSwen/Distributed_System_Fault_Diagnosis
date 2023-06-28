@@ -88,12 +88,11 @@ def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels
 
 class Classifier:
     def __init__(self, module, param_grid):
-        self.is_trained = False
+        self.selection_model = None
         self.param_grid = param_grid
         self.module = module
 
     def train(self, X, y):
-        self.is_trained = True
         self.rfc_cv = GridSearchCV(estimator=self.module, param_grid=self.param_grid, scoring='f1_macro', cv=5)
         self.rfc_cv.fit(X, y)
         # for key in self.rfc_cv.best_params_.keys():

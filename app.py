@@ -8,12 +8,14 @@ app = Flask(__name__)
 
 
 def checkFile():
-    if 'file' not in request.files:
+    if 'file' not in request.files or request.files['file'].filename == '':
         return False
-    if request.files['file'].filename == '':
+    return True
+
+
+def checkModel():
+    if res.selection_model is None:
         return False
-    # if not res.is_trained:
-    #     return jsonify({'ERROR': 'Model not trained!'})
     return True
 
 
@@ -43,6 +45,8 @@ def train():
 def predict():
     if not checkFile():
         return jsonify({'ERROR': 'File not uploaded!'})
+    if not checkModel():
+        return jsonify({'ERROR': 'Model not trained!'})
 
     file = request.files['file']
     sample_id_v, features_v, label_v = data_load(file)
@@ -59,6 +63,8 @@ def predict():
 def test():
     if not checkFile():
         return jsonify({'ERROR': 'File not uploaded!'})
+    if not checkModel():
+        return jsonify({'ERROR': 'Model not trained!'})
 
     file = request.files['file']
     sample_id_v, features_v, label_v = data_load(file)
