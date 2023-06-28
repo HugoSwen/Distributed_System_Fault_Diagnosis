@@ -10,5 +10,3 @@ res = Classifier(RandomForestClassifier(), param_grid={
     'class_weight': ['balanced'],
     'oob_score': [True]
 })
-# check if the model has been trained
-res.is_trained = False

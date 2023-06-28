@@ -1,8 +1,20 @@
-from flask import Flask, request, jsonify
+import json
+
+from flask import Flask, request, jsonify, Response
 
 from static.Clf_object import *
 
 app = Flask(__name__)
+
+
+def checkFile():
+    if 'file' not in request.files:
+        return False
+    if request.files['file'].filename == '':
+        return False
+    # if not res.is_trained:
+    #     return jsonify({'ERROR': 'Model not trained!'})
+    return True
 
 
 @app.route('/')
@@ -13,9 +25,7 @@ def hello():
 # train path
 @app.route('/train', methods=['post'])
 def train():
-    if 'file' not in request.files:
-        return jsonify({'ERROR': 'File not uploaded!'})
-    if request.files['file'].filename == '':
+    if not checkFile():
         return jsonify({'ERROR': 'File not uploaded!'})
 
     file = request.files['file']
@@ -23,30 +33,41 @@ def train():
     X_train, y_train, selection_model = train_pre_process(features, label)
 
     res.train(X_train, y_train)
-    res.is_trained = True
     res.selection_model = selection_model
 
     return 'success'
 
 
-# test path
-@app.route('/test', methods=['post'])
-def test():
-    if 'file' not in request.files:
+# predict path
+@app.route('/predict', methods=['post'])
+def predict():
+    if not checkFile():
         return jsonify({'ERROR': 'File not uploaded!'})
-    if request.files['file'].filename == '':
-        return jsonify({'ERROR': 'File not uploaded!'})
-    if not res.is_trained:
-        return jsonify({'ERROR': 'Model not trained!'})
 
     file = request.files['file']
     sample_id_v, features_v, label_v = data_load(file)
     X, y = test_pre_process(features_v, label_v, res.selection_model)
-    report, matrix = res.test(X, y)
+    predict_dict = res.predict(X)
 
-    result = {**report, **matrix}
+    json_data = json.dumps(predict_dict, sort_keys=False)
+    return Response(json_data, mimetype='application/json')
+    # return jsonify(predict_dict)
 
-    return jsonify(result)
+
+# test path
+@app.route('/test', methods=['post'])
+def test():
+    if not checkFile():
+        return jsonify({'ERROR': 'File not uploaded!'})
+
+    file = request.files['file']
+    sample_id_v, features_v, label_v = data_load(file)
+    X, y = test_pre_process(features_v, label_v, res.selection_model)
+    result = res.test(X, y)
+
+    json_data = json.dumps(result, sort_keys=False)
+    return Response(json_data, mimetype='application/json')
+    # return jsonify(result)
 
 
 if __name__ == '__main__':

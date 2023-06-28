@@ -80,7 +80,7 @@ def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels
 
     # 将图像转换为字典
     matrix = {
-        'data': img_base64
+        'image': img_base64
     }
 
     return matrix
@@ -88,21 +88,30 @@ def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels
 
 class Classifier:
     def __init__(self, module, param_grid):
+        self.is_trained = False
         self.param_grid = param_grid
         self.module = module
 
     def train(self, X, y):
+        self.is_trained = True
         self.rfc_cv = GridSearchCV(estimator=self.module, param_grid=self.param_grid, scoring='f1_macro', cv=5)
         self.rfc_cv.fit(X, y)
-        # is_success = True
-        # check failure
-        # return is_success
+        # for key in self.rfc_cv.best_params_.keys():
+        #     print('%s = %s' % (key, self.rfc_cv.best_params_[key]))
+
+    def predict(self, X):
+        predict_res = self.rfc_cv.predict(X)
+        predict_dict = {str(index): str(value) for index, value in enumerate(predict_res)}
+        return predict_dict
 
     def test(self, X, y):
-        test_est = self.rfc_cv.predict(X)
+        predict_res = self.rfc_cv.predict(X)
         # test classification report
-        report = metrics.classification_report(test_est, y, output_dict=True)
+        report = metrics.classification_report(predict_res, y, output_dict=True)
         # confusion matrix
-        matrix = plot_matrix(y, test_est, [0, 1, 2, 3, 4, 5], title='confusion_matrix',
+        matrix = plot_matrix(y, predict_res, [0, 1, 2, 3, 4, 5], title='confusion_matrix',
                              axis_labels=['0', '1', '2', '3', '4', '5'])
-        return report, matrix
+        result = {**report, **matrix}
+        return result
+
+
