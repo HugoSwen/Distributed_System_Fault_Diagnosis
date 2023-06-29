@@ -74,14 +74,9 @@ def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels
     img_io = io.BytesIO()
     pl.savefig(img_io, format='png')
     img_io.seek(0)
-
-    # 将图像流转换为 Base64 编码的字符串
-    img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')
-
-    # 将图像转换为字典
-    matrix = {
-        'image': img_base64
-    }
+    img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')  # 将图像流转换为 Base64 编码的字符串
+    matrix = {'image': img_base64}  # 将图像转换为字典
+    pl.close()
 
     return matrix
 
@@ -112,5 +107,3 @@ class Classifier:
                              axis_labels=['0', '1', '2', '3', '4', '5'])
         result = {**report, **matrix}
         return result
-
-

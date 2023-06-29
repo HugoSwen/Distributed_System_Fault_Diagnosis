@@ -1,6 +1,8 @@
 import json
+import os
 
 from flask import Flask, request, jsonify, Response
+from werkzeug.utils import secure_filename
 
 from static.Clf_object import *
 
@@ -8,7 +10,14 @@ app = Flask(__name__)
 
 
 def checkFile():
-    if 'file' not in request.files or request.files['file'].filename == '':
+    file = request.files['file']
+
+    if file:
+        filename = secure_filename(file.filename)
+        extension = os.path.splitext(filename)[1]
+        if extension != '.csv':
+            return False
+    else:
         return False
     return True
 
@@ -28,7 +37,7 @@ def hello():
 @app.route('/train', methods=['post'])
 def train():
     if not checkFile():
-        return jsonify({'ERROR': 'File not uploaded!'})
+        return "failure"
 
     file = request.files['file']
     sample_id, features, label = data_load(file)
@@ -43,10 +52,8 @@ def train():
 # predict path
 @app.route('/predict', methods=['post'])
 def predict():
-    if not checkFile():
-        return jsonify({'ERROR': 'File not uploaded!'})
-    if not checkModel():
-        return jsonify({'ERROR': 'Model not trained!'})
+    if not checkFile() or not checkModel():
+        return "failure"
 
     file = request.files['file']
     sample_id_v, features_v, label_v = data_load(file)
@@ -61,10 +68,8 @@ def predict():
 # test path
 @app.route('/test', methods=['post'])
 def test():
-    if not checkFile():
-        return jsonify({'ERROR': 'File not uploaded!'})
-    if not checkModel():
-        return jsonify({'ERROR': 'Model not trained!'})
+    if not checkFile() or not checkModel():
+        return "failure"
 
     file = request.files['file']
     sample_id_v, features_v, label_v = data_load(file)
