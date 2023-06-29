@@ -15,6 +15,17 @@ from sklearn.ensemble import RandomForestClassifier
 torch.cuda.is_available()
 
 
+def convert():
+    img_io = io.BytesIO()
+    pl.savefig(img_io, format='png')
+    img_io.seek(0)
+    # 将图像流转换为 Base64 编码的字符串
+    img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')
+    image = {'image': img_base64}
+    pl.close()
+    return image
+
+
 def data_load(path):
     df = pd.read_csv(path)
     sample_id = df['sample_id'].values
@@ -70,40 +81,55 @@ def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels
                 pl.text(j, i, format(int(cm[i][j] * 100 + 0.5), 'd') + '%',
                         ha="center", va="center",
                         color="white" if cm[i][j] > thresh else "black")
-
-    img_io = io.BytesIO()
-    pl.savefig(img_io, format='png')
-    img_io.seek(0)
-    img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')  # 将图像流转换为 Base64 编码的字符串
-    matrix = {'image': img_base64}  # 将图像转换为字典
-    pl.close()
-
+    # 混淆矩阵Base64编码字符串json
+    matrix = convert()
     return matrix
 
 
 class Classifier:
+    # 类初始化
     def __init__(self, module, param_grid):
         self.selection_model = None
         self.param_grid = param_grid
         self.module = module
 
     def train(self, X, y):
-        self.rfc_cv = GridSearchCV(estimator=self.module, param_grid=self.param_grid, scoring='f1_macro', cv=5)
+        self.rfc_cv = GridSearchCV(estimator=self.module, param_grid=self.param_grid, scoring='f1_macro', cv=5)# 5折交叉验证
         self.rfc_cv.fit(X, y)
-        # for key in self.rfc_cv.best_params_.keys():
-        #     print('%s = %s' % (key, self.rfc_cv.best_params_[key]))
 
     def predict(self, X):
-        predict_res = self.rfc_cv.predict(X)
-        predict_dict = {str(index): str(value) for index, value in enumerate(predict_res)}
-        return predict_dict
+        y_pred = self.rfc_cv.predict(X)
+        # 预测结果转字典
+        y_pred_dict = {str(index): int(value) for index, value in enumerate(y_pred)}
+        # 绘制分类结果柱状图
+        unique_labels = set(y_pred)
+        counts = [sum(y_pred == label) for label in unique_labels]  # 计算每个分类的样本数量
+        labels = [f"Class {label}" for label in unique_labels]  # 创建分类标签的字符串列表
+        bars = pl.bar(labels, counts)  # 创建BarContainer对象
+
+        for bar, count in zip(bars, counts):
+            height = bar.get_height()
+            pl.text(bar.get_x() + bar.get_width() / 2, height, count,
+                    ha='center', va='bottom')
+
+        pl.title("Classification Result")
+        pl.xlabel("Class")
+        pl.ylabel("Count")
+        # 柱状图Base64编码字符串json
+        barImage = convert()
+        # 合并结果
+        result = {**y_pred_dict, **barImage}
+
+        return result
 
     def test(self, X, y):
-        predict_res = self.rfc_cv.predict(X)
-        # test classification report
-        report = metrics.classification_report(predict_res, y, output_dict=True)
-        # confusion matrix
-        matrix = plot_matrix(y, predict_res, [0, 1, 2, 3, 4, 5], title='confusion_matrix',
+        y_pred = self.rfc_cv.predict(X)
+        # 分类评估报告
+        report = metrics.classification_report(y, y_pred, output_dict=True)
+        # 混淆矩阵
+        matrix = plot_matrix(y, y_pred, [0, 1, 2, 3, 4, 5], title='confusion_matrix',
                              axis_labels=['0', '1', '2', '3', '4', '5'])
+        # 合并结果
         result = {**report, **matrix}
+
         return result

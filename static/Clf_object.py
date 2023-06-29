@@ -1,4 +1,4 @@
-from static.dl import *
+from static.model import *
 
 # instantiating built-in object
 res = Classifier(RandomForestClassifier(), param_grid={
