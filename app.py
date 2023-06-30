@@ -6,23 +6,22 @@ from flask import Flask, request, jsonify, Response
 from werkzeug.utils import secure_filename
 
 from static.Clf_object import *
+from static.config import database_config
 
 app = Flask(__name__)
 
 
-def getCurcor():
+def getcurcor():
     data = request.get_json()
     username = data["username"]
     password = data["password"]
-    connection = pymysql.connect(host="localhost",
-                                 port=3306,
-                                 user="root",
-                                 password="yangqiyuan2003",
-                                 charset="utf8mb4",
-                                 database="demo1"
-                                 )
-    cursor = connection.cursor()
-    return username, password, cursor, connection
+
+    cnn = pymysql.connect(
+        **database_config,
+        database="fault_diagnosis_system"
+    )
+    cursor = cnn.cursor()
+    return username, password, cursor, cnn
 
 
 def checkfile():
@@ -45,44 +44,55 @@ def checkmodel():
 
 
 # register path
-@app.route("/do_register", methods=["post"])
-def do_register():
-    username, password, cursor, connection = getCurcor()
-    sql = "insert into user values(%s,%s)"
+@app.route("/register", methods=["post"])
+def register():
+    username, password, cursor, cnn = getcurcor()
+    sql = "insert into user(username,password) values(%s,%s)"
     try:
         cursor.execute(sql, (username, password))
-        connection.commit()
-        cursor.close()
-        connection.close()
-        return "success"
-    except:
-        errorDefault = ""
-        connection.rollback()
-        sql_2 = "select * from user where username=%s"
-        cursor.execute(sql_2, username)
-        result = cursor.fetchone()
-        if (result):
-            errorDefault = "your username has been registered"
-        else:
-            errorDefault = "false"
-        cursor.close()
-        connection.close()
-        return errorDefault
+        cnn.commit()
+        result = "success"
+    except pymysql.Error as e:
+        cnn.rollback()
+        print(e)
+        result = "failure"
+
+    cursor.close()
+    cnn.close()
+    return result
 
 
 # login path
-@app.route("/do_login", methods=["post"])
-def do_login():
-    username, password, cursor, connection = getCurcor()
-    sql = "select * from user where username=%s and password=%s"
+@app.route("/login", methods=["post"])
+def login():
+    username, password, cursor, cnn = getcurcor()
+    sql = "select * from user where username= %s and password= %s"
     cursor.execute(sql, (username, password))
     result = cursor.fetchone()
     cursor.close()
-    connection.close()
+    cnn.close()
     if result:
         return username + ":  success"
     else:
-        return "false"
+        return "failure"
+
+
+# modify path
+@app.route("/update", methods=["post"])
+def update():
+    username, password, cursor, cnn = getcurcor()
+    sql1 = "update user set password = %s where username = %s"
+    sql2 = "select * from user where username = %s"
+    cursor.execute(sql2, username)
+    if cursor.fetchone():
+        cursor.execute(sql1, (password, username))
+        cnn.commit()
+        result = "success"
+    else:
+        result = "failure"
+    cursor.close()
+    cnn.close()
+    return result
 
 
 # train path

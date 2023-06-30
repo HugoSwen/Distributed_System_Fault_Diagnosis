@@ -16,13 +16,12 @@ torch.cuda.is_available()
 
 
 def convert():
-    img_io = io.BytesIO()
-    pl.savefig(img_io, format='png')
-    img_io.seek(0)
-    # 将图像流转换为 Base64 编码的字符串
-    img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')
-    image = {'image': img_base64}
-    pl.close()
+    img_io = io.BytesIO()  # io字节流
+    pl.savefig(img_io, format='png')  # 将图形保存为 png 格式，并将图像数据写入到 img_io对象中。
+    img_io.seek(0)  # 将文件指针移动到图像数据的开头位置
+    img_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')  # 将图像流转换为 Base64 编码的字符串
+    image = {'image': img_base64}  # 将图像保存为 Base64 编码的字符串字典
+    pl.close()  # 清空内存
     return image
 
 
@@ -94,7 +93,8 @@ class Classifier:
         self.module = module
 
     def train(self, X, y):
-        self.rfc_cv = GridSearchCV(estimator=self.module, param_grid=self.param_grid, scoring='f1_macro', cv=5)# 5折交叉验证
+        self.rfc_cv = GridSearchCV(estimator=self.module, param_grid=self.param_grid, scoring='f1_macro',
+                                   cv=5)  # 5折交叉验证
         self.rfc_cv.fit(X, y)
 
     def predict(self, X):
@@ -115,7 +115,7 @@ class Classifier:
         pl.title("Classification Result")
         pl.xlabel("Class")
         pl.ylabel("Count")
-        # 柱状图Base64编码字符串json
+        # 柱状图 Base64 编码字符串json
         barImage = convert()
         # 合并结果
         result = {**y_pred_dict, **barImage}
