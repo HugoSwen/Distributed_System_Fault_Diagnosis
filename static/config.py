@@ -3,6 +3,7 @@ database_config = {
     "user": "root",
     "password": "1234",
     "port": 3306,
+    "charset": 'utf8mb4'
 }
 
 

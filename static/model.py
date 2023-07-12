@@ -6,16 +6,12 @@ import numpy as np
 import pandas as pd
 import sklearn.impute as impute
 import sklearn.metrics as metrics
-import torch
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.feature_selection import SelectFromModel
-from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
-
-torch.cuda.is_available()
 
 
 def convert():
+    pl.show()
     img_io = io.BytesIO()  # io字节流
     pl.savefig(img_io, format='png')  # 将图形保存为 png 格式，并将图像数据写入到 img_io对象中。
     img_io.seek(0)  # 将文件指针移动到图像数据的开头位置
@@ -33,28 +29,32 @@ def data_load(path):
     return sample_id, features, label
 
 
-def train_pre_process(X, y):
-    Impute = impute.SimpleImputer(strategy="most_frequent")
-    Impute.fit(X)
-    X = Impute.transform(X)
+def data_load_test(path):
+    df = pd.read_csv(path)
+    sample_id = df['sample_id'].values
+    features = df.loc[:, 'feature0':'feature106'].values
+    return sample_id, features
 
-    classifier = ExtraTreesClassifier(n_estimators=50)
-    classifier = classifier.fit(X, y)
-    selection_model = SelectFromModel(classifier, prefit=True)
 
+def train_pre_process(X, y, threshold):
+    imputer = impute.SimpleImputer(strategy="most_frequent")
+    imputer.fit(X)
+    X = imputer.transform(X)
+    clf = ExtraTreesClassifier(n_estimators=70, n_jobs=-1, random_state=42)
+    clf = clf.fit(X, y)
+    selection_model = SelectFromModel(clf, prefit=True, threshold=threshold)
     X = selection_model.transform(X)
-    # print(X.shape)
+    print('train selected features:' + str(X.shape))
     return X, y, selection_model
 
 
-def test_pre_process(X, y, selection_model):
-    Impute = impute.SimpleImputer(strategy="most_frequent")
-    Impute.fit(X)
-    X = Impute.transform(X)
-
+def valid_pre_process(X, selection_model):
+    imputer = impute.SimpleImputer(strategy="most_frequent")
+    imputer.fit(X)
+    X = imputer.transform(X)
     X = selection_model.transform(X)
-    # print(X.shape)
-    return X, y
+    print('test selected features:' + str(X.shape))
+    return X
 
 
 def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels=None):
@@ -85,51 +85,11 @@ def plot_matrix(y_true, y_pred, labels_name, title=None, thresh=0.8, axis_labels
     return matrix
 
 
-class Classifier:
-    # 类初始化
-    def __init__(self, module, param_grid):
-        self.selection_model = None
-        self.param_grid = param_grid
-        self.module = module
-
-    def train(self, X, y):
-        self.rfc_cv = GridSearchCV(estimator=self.module, param_grid=self.param_grid, scoring='f1_macro',
-                                   cv=5)  # 5折交叉验证
-        self.rfc_cv.fit(X, y)
-
-    def predict(self, X):
-        y_pred = self.rfc_cv.predict(X)
-        # 预测结果转字典
-        y_pred_dict = {str(index): int(value) for index, value in enumerate(y_pred)}
-        # 绘制分类结果柱状图
-        unique_labels = set(y_pred)
-        counts = [sum(y_pred == label) for label in unique_labels]  # 计算每个分类的样本数量
-        labels = [f"Class {label}" for label in unique_labels]  # 创建分类标签的字符串列表
-        bars = pl.bar(labels, counts)  # 创建BarContainer对象
-
-        for bar, count in zip(bars, counts):
-            height = bar.get_height()
-            pl.text(bar.get_x() + bar.get_width() / 2, height, count,
-                    ha='center', va='bottom')
-
-        pl.title("Classification Result")
-        pl.xlabel("Class")
-        pl.ylabel("Count")
-        # 柱状图 Base64 编码字符串json
-        barImage = convert()
-        # 合并结果
-        result = {**y_pred_dict, **barImage}
-
-        return result
-
-    def test(self, X, y):
-        y_pred = self.rfc_cv.predict(X)
-        # 分类评估报告
-        report = metrics.classification_report(y, y_pred, output_dict=True)
-        # 混淆矩阵
-        matrix = plot_matrix(y, y_pred, [0, 1, 2, 3, 4, 5], title='confusion_matrix',
-                             axis_labels=['0', '1', '2', '3', '4', '5'])
-        # 合并结果
-        result = {**report, **matrix}
-
-        return result
+def validate_result(y, y_pred):
+    # 分类评估报告
+    report = metrics.classification_report(y, y_pred, output_dict=True)
+    # 混淆矩阵
+    matrix = plot_matrix(y, y_pred, [0, 1, 2, 3, 4, 5], title='confusion_matrix',
+                         axis_labels=['0', '1', '2', '3', '4', '5'])
+    result = {**report, **matrix}
+    return result
