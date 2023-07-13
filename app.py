@@ -1,7 +1,12 @@
 import os
+import pickle
+import tempfile
+import threading
+import time
+
 import joblib
 import pymysql
-from flask import Flask, request, jsonify, Response, session, send_file
+from flask import Flask, request, Response, session, send_file, make_response
 from werkzeug.utils import secure_filename
 
 from static.DLRFC import *
@@ -151,15 +156,24 @@ def download():
     # row = cursor.fetchone()
 
     if dlrfc.selection_model:
-        file_path = "tempfiles/model.joblib"
-        joblib.dump(dlrfc, file_path)
+        with tempfile.NamedTemporaryFile(suffix='.joblib', delete=False, dir="tempfiles") as temp_file:
+            file_path = temp_file.name
+            joblib.dump(dlrfc, file_path)
+        #     print(file_path)
+        # response = make_response(send_file(file_path, as_attachment=True))
+        response = Response(pickle.dumps(dlrfc), mimetype='application/octet-stream')
 
-        # response = Response(file_path, mimetype='application/octet-stream')
-        # response.headers.set('Content-Disposition', 'attachment', filename='model.joblib')
+        response.headers.set('Content-Disposition', 'attachment', filename='model.joblib')
 
-        file = send_file(file_path, as_attachment=True)
-        # os.unlink(file_path)
-        return file
+        # def delete_file(file_path):
+        #     time.sleep(1)
+        #     os.remove(file_path)
+        #
+        # # 创建一个新的线程来执行文件删除操作
+        # delete_thread = threading.Thread(target=delete_file, args=(file_path,))
+        # delete_thread.start()
+
+        return response
     else:
         return "failure"
 
@@ -167,6 +181,9 @@ def download():
 # upload path
 @app.route('/upload', methods=['post'])
 def upload():
+    if not checkfile():
+        return "failure"
+
     file = request.files['file']
     global dlrfc
     dlrfc = joblib.load(file)

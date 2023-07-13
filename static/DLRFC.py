@@ -15,7 +15,7 @@ import matplotlib.pyplot as pl
 class DLRFC:
     def __init__(self):
         self.selection_model = None
-        self.election_model_1 = None
+        self.selection_model_1 = None
         self.rfc1 = RandomForestClassifier(criterion='gini',
                                            max_depth=17,
                                            n_estimators=208,
@@ -111,41 +111,58 @@ class DLRFC:
         self.rfc1.fit(X_train, y_train)
 
         # 1 2训练集
-        category_filter_1 = np.isin(label, [1, 2])  # 过滤器
-        X_filtered_1 = features[category_filter_1]
-        y_filtered_1 = label[category_filter_1]
-        X_train_1, y_train_1, self.selection_model_1 = self.train_pre_process(X_filtered_1, y_filtered_1, '1.85*mean')
-        self.rfc2.fit(X_train_1, y_train_1)
+        category_filter_t = np.isin(label, [1, 2])  # 过滤器
+        X_filtered = features[category_filter_t]
+        y_filtered = label[category_filter_t]
+
+        if np.sum(category_filter_t) > 0:
+            X_train_1, y_train_1, self.selection_model_1 = self.train_pre_process(X_filtered, y_filtered, '1.85*mean')
+            self.rfc2.fit(X_train_1, y_train_1)
 
     def validate(self, path):
         sample_id_v, features_v, label_v = self.data_load(path)
-        X_test = self.valid_pre_process(features_v, self.selection_model)
-        X_test_1 = self.valid_pre_process(features_v, self.selection_model_1)
+        X_valid = self.valid_pre_process(features_v, self.selection_model)
+        X_valid_1 = self.valid_pre_process(features_v, self.selection_model_1)
         y_true = label_v
-        y_pred = self.rfc1.predict(X_test)
+        y_pred = self.rfc1.predict(X_valid)
 
-        for i in range(y_pred.shape[0]):
-            if y_pred[i] == 1 or y_pred[i] == 2:
-                y_pred[i] = self.rfc2.predict(X_test_1[i].reshape(1, X_test_1.shape[1]))
+        # 使用布尔索引选择预测结果为1或2的数据
+        category_filter_v = np.isin(y_pred, [1, 2])
+        X_valid_2 = X_valid_1[category_filter_v]
+
+        if np.sum(category_filter_v) > 0:
+            y_pred_2 = self.rfc2.predict(X_valid_2)
+            y_pred[category_filter_v] = y_pred_2  # 将重新预测的结果赋值给对应的位置
+
+        # y_pred.json
+        # y_pred_dict = {str(index): int(value) for index, value in enumerate(y_pred)}
+        # json_data = json.dumps(y_pred_dict)
+        # with open("../data_new/y_pred.json", "w") as file:
+        #     file.write(json_data)
 
         # 分类评估报告
         report = metrics.classification_report(y_true, y_pred, output_dict=True)
+        print(metrics.classification_report(y_true, y_pred))
         # 混淆矩阵
         matrix = self.plot_matrix(y_true, y_pred, [0, 1, 2, 3, 4, 5], title='confusion_matrix',
                                   axis_labels=['0', '1', '2', '3', '4', '5'])
+
         result = {**report, **matrix}
         return result
 
     def test(self, path):
-        sample_id_t, features_t = self.data_load_test(path)
-
-        X_test = self.valid_pre_process(features_t, self.selection_model)
-        X_test_1 = self.valid_pre_process(features_t, self.selection_model_1)
+        sample_id_v, features_v = self.data_load_test(path)
+        X_test = self.valid_pre_process(features_v, self.selection_model)
+        X_test_1 = self.valid_pre_process(features_v, self.selection_model_1)
         y_pred = self.rfc1.predict(X_test)
 
-        for i in range(y_pred.shape[0]):
-            if y_pred[i] == 1 or y_pred[i] == 2:
-                y_pred[i] = self.rfc2.predict(X_test_1[i].reshape(1, X_test_1.shape[1]))
+        category_filter_t = np.isin(y_pred, [1, 2])
+        X_test_2 = X_test_1[category_filter_t]
+
+        if np.sum(category_filter_t) > 0:
+            y_pred_2 = self.rfc2.predict(X_test_2)
+            y_pred[category_filter_t] = y_pred_2
+
         # 预测结果转字典
         y_pred_dict = {str(index): int(value) for index, value in enumerate(y_pred)}
 

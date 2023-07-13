@@ -8,7 +8,7 @@ import sklearn.metrics as metrics
 import matplotlib.pyplot as pl
 import joblib
 
-dlrfc = joblib.load("../tempfiles/test.joblib")
+dlrfc = joblib.load("../tempfiles/tmpn7b70x59.joblib")
 
 # dlrfc.train("../data_new/train_10000.csv")
 
