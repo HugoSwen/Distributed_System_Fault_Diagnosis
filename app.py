@@ -164,12 +164,11 @@ def download():
     row = cursor.fetchone()
 
     if row[3]:
-        zip_filename = 'files.zip'
+        zip_filename = 'model.zip'
 
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
-            filenames = ['static/DLRFC.py', row[3]]
-            for filename in filenames:
-                zipf.write(filename, arcname=os.path.basename(filename))
+            zipf.write('DLRFC.py')
+            zipf.write(row[3], arcname='model.joblib')
 
         def delete_file(file_path):
             time.sleep(1)
