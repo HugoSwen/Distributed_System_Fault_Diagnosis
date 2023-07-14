@@ -1,10 +1,5 @@
+import json
 import os
-import pickle
-import tempfile
-import threading
-import time
-import uuid
-
 import joblib
 import pymysql
 from flask import Flask, request, Response, session, send_file, make_response
