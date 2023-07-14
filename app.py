@@ -1,12 +1,16 @@
 import json
 import os
+import threading
+import time
+import zipfile
+
 import joblib
 import pymysql
-from flask import Flask, request, Response, session, send_file, make_response
+from flask import Flask, request, Response, session, send_file
 from werkzeug.utils import secure_filename
 
-from static.DLRFC import *
-from static.config import database_config
+from DLRFC import *
+from config import database_config
 
 app = Flask(__name__)
 app.secret_key = 'Larghetto_se'
@@ -151,7 +155,7 @@ def test():
 
 
 # download path
-@app.route('/download', methods=['post'])
+@app.route('/download')
 def download():
     cursor, cnn = getcurcor()
     username = session.get("username")
@@ -160,19 +164,21 @@ def download():
     row = cursor.fetchone()
 
     if row[3]:
-        response = make_response(send_file(row[3], as_attachment=True))
-        # # response = Response(pickle.dumps(dlrfc), mimetype='application/octet-stream')
-        response.headers.set('Content-Disposition', 'attachment', filename='model.joblib')
+        zip_filename = 'files.zip'
 
-        # def delete_file(file_path):
-        #     time.sleep(1)
-        #     os.remove(file_path)
-        #
-        # # 创建一个新的线程来执行文件删除操作
-        # delete_thread = threading.Thread(target=delete_file, args=(file_path,))
-        # delete_thread.start()
+        with zipfile.ZipFile(zip_filename, 'w') as zipf:
+            filenames = ['static/DLRFC.py', row[3]]
+            for filename in filenames:
+                zipf.write(filename, arcname=os.path.basename(filename))
 
-        return response
+        def delete_file(file_path):
+            time.sleep(1)
+            os.remove(file_path)
+
+        delete_thread = threading.Thread(target=delete_file, args=(zip_filename,))
+        delete_thread.start()
+
+        return send_file(zip_filename, mimetype='zip', as_attachment=True)
     else:
         return "failure"
 

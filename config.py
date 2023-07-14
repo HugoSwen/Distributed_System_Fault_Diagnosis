@@ -6,4 +6,3 @@ database_config = {
     "charset": 'utf8mb4'
 }
 
-
