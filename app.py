@@ -169,7 +169,6 @@ def download():
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
             zipf.write('DLRFC.py')
             zipf.write(row[3], arcname='model.joblib')
-
         def delete_file(file_path):
             time.sleep(1)
             os.remove(file_path)
